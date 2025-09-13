@@ -4,32 +4,25 @@
   <meta charset="UTF-8">
   <title>Car Display Dashboard</title>
 
+  <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Leaflet -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+  <!-- Leaflet Routing Machine -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css" />
   <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
+
+  <!-- Weather Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/weather-icons/2.0.10/css/weather-icons.min.css">
+
+  <!-- Spotify Web Playback SDK -->
   <script src="https://sdk.scdn.co/spotify-player.js"></script>
 
-  <style>
-    html, body { margin:0; padding:0; height:100%; width:100%; }
-    body { background:#111; color:#fff; font-family:Arial, sans-serif; display:flex; flex-wrap:wrap; gap:10px; padding:10px; box-sizing:border-box; }
-    #map { flex:1 1 60%; min-width:300px; min-height:300px; height:calc(100vh - 20px); }
-    .info-panel { flex:1 1 35%; display:flex; flex-direction:column; gap:20px; padding:10px; background:#222; border-radius:10px; min-width:250px; box-sizing:border-box; }
-    .speed-limit-sign { width:15vw; max-width:150px; min-width:80px; aspect-ratio:1; border:12px solid red; border-radius:50%; background:white; display:flex; justify-content:center; align-items:center; box-shadow:0 0 10px rgba(0,0,0,0.5); margin:0 auto; }
-    .speed-limit-sign span { font-size:4vw; font-weight:bold; color:black; font-family:"Arial Black", sans-serif; }
-    #spotify { background:#1db954; border-radius:10px; padding:10px; text-align:center; }
-    #spotify img { max-width:20vw; max-height:20vw; border-radius:8px; margin:10px 0; }
-    .controls { display:flex; justify-content:center; gap:10px; margin-top:10px; }
-    .controls button { background:#fff; border:none; border-radius:5px; padding:5px 10px; cursor:pointer; }
-    .equalizer { display:flex; justify-content:center; gap:2px; align-items:flex-end; height:50px; margin-top:10px; }
-    .bar { width:4px; background:#fff; animation:wave 1s infinite; }
-    @keyframes wave { 0%,100% { height:10px; } 50% { height:50px; } }
-    .search-box { display:flex; gap:5px; justify-content:center; margin-top:10px; }
-    .search-box input { padding:5px; border-radius:5px; border:none; flex:1; }
-    .search-box button { padding:5px 10px; border-radius:5px; border:none; cursor:pointer; background:#fff; }
-  </style>
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
@@ -63,46 +56,12 @@
         <input type="text" id="spotifySearch" placeholder="Search a track">
         <button id="searchBtn">Search</button>
       </div>
+      <div id="searchResults"></div>
     </div>
   </div>
 </div>
 
-<script>
-const map = L.map('map').setView([51.505, -0.09], 15);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
-L.Routing.control({ waypoints: [], routeWhileDragging: true }).addTo(map);
-
-async function fetchSpeedLimit(lat, lon){const query=`[out:json];way(around:50,${lat},${lon})[highway];out tags center 1;`;const url="https://overpass-api.de/api/interpreter?data="+encodeURIComponent(query);try{const response=await fetch(url);const data=await response.json();let speed="--";if(data.elements.length>0){for(let way of data.elements){if(way.tags&&way.tags.maxspeed){speed=way.tags.maxspeed;break;}}}document.getElementById("speedLimit").textContent=speed;}catch{document.getElementById("speedLimit").textContent="--";}}
-function updateSpeedLimit(){if(navigator.geolocation) navigator.geolocation.getCurrentPosition(pos=>fetchSpeedLimit(pos.coords.latitude,pos.coords.longitude));}
-setInterval(updateSpeedLimit,10000);updateSpeedLimit();
-
-async function fetchWeather(lat, lon){const url=`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`;const res=await fetch(url);const data=await res.json();const weather=data.current_weather;document.getElementById("temperature").textContent=`Temp: ${weather.temperature}°C`;document.getElementById("details").textContent=`Wind: ${weather.windspeed} km/h`;let icon="wi wi-day-sunny";if(weather.weathercode>=51&&weather.weathercode<=67)icon="wi wi-rain";if(weather.weathercode>=71&&weather.weathercode<=77)icon="wi wi-snow";if(weather.weathercode==3)icon="wi wi-cloudy";document.getElementById("weatherIcon").className=icon;}
-if(navigator.geolocation) navigator.geolocation.getCurrentPosition(pos=>fetchWeather(pos.coords.latitude,pos.coords.longitude));
-
-let _token=null;
-window.addEventListener("load",()=>{const hash=window.location.hash.substring(1).split("&").reduce((acc,item)=>{if(item){const parts=item.split("=");acc[parts[0]]=decodeURIComponent(parts[1]);}return acc;},{});if(hash.access_token){_token=hash.access_token;document.getElementById("loginBtn").style.display="none";document.getElementById("player").style.display="block";initializePlayer();}});
-document.getElementById("loginBtn").addEventListener("click",()=>{const clientId="212b06b3ee574cc2b7b90a58446eb4df";const redirectUri="https://charliefdgfdgfd.github.io/mypersonalmapsnew";const scopes="streaming user-read-playback-state user-modify-playback-state user-read-currently-playing";window.open(`https://accounts.spotify.com/authorize?client_id=${clientId}&response_type=token&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scopes)}`,'_blank');});
-
-function initializePlayer(){window.onSpotifyWebPlaybackSDKReady=()=>{const player=new Spotify.Player({name:'Car Dashboard Player',getOAuthToken:cb=>cb(_token),volume:0.5});player.addListener('player_state_changed',state=>{if(!state)return;const track=state.track_window.current_track;document.getElementById("trackName").textContent=track.name;document.getElementById("artistName").textContent=track.artists.map(a=>a.name).join(", ");document.getElementById("albumArt").src=track.album.images[0].url;});player.connect();document.getElementById("playPauseBtn").addEventListener("click",()=>{player.togglePlay();});document.getElementById("nextBtn").addEventListener("click",()=>{player.nextTrack();});document.getElementById("prevBtn").addEventListener("click",()=>{player.previousTrack();});
-
-document.getElementById("searchBtn").addEventListener("click",async()=>{
-  const query=document.getElementById("spotifySearch").value;
-  if(!query) return;
-  const res=await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track&limit=1`,{
-    headers:{Authorization:`Bearer ${_token}`}
-  });
-  const data=await res.json();
-  if(data.tracks.items.length>0){
-    const trackUri=data.tracks.items[0].uri;
-    await fetch(`https://api.spotify.com/v1/me/player/play`,{
-      method:'PUT',
-      body:JSON.stringify({uris:[trackUri]}),
-      headers:{Authorization:`Bearer ${_token}`}
-    });
-  }
-});
-};
-}
-</script>
+<!-- Custom JS -->
+<script src="dashboard.js"></script>
 </body>
 </html>
