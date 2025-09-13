@@ -113,12 +113,15 @@ body {
   margin-top:10px; 
 }
 
-.search-box input { 
-  padding:5px; 
-  border-radius:5px; 
-  border:none; 
-  flex:1; 
+.search-box input {
+    padding:5px; 
+    border-radius:5px; 
+    border:none; 
+    flex:1; 
+    color:#000;        /* Make text visible */
+    background:#fff;   /* Make background light for contrast */
 }
+
 
 .search-box button { 
   padding:5px 10px; 
